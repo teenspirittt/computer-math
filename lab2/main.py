@@ -1,64 +1,138 @@
-import math
+import numpy as np
+
+SIZE = 4
+
+matrix = [[9, 14, -15, 23],
+          [16, 7, -22, 29],
+          [18, 20, -3, 32],
+          [10, 12, -16, 9]]
+
+matrix2 = [[90, 14, -15, 23],
+           [16, 70, -22, 29],
+           [18, 20, -300, 32],
+           [10, 12, -16, 90]]
+
+b = [5, 8, 9, 4]
 
 
-def F(x):
-    return math.tan(0.3 * x + 0.5) - x ** 2
+def determinant(matrix, m):
+    p = [[0] * m for _ in range(m)]
+
+    d = 0
+    k = 1
+    n = m - 1
+
+    if m == 1:
+        return matrix[0][0]
+
+    if m == 2:
+        return matrix[0][0] * matrix[1][1] - (matrix[1][0] * matrix[0][1])
+
+    if m > 2:
+        for i in range(m):
+            getMatrix(matrix, p, i, 0, m)
+            d = d + k * matrix[i][0] * determinant(p, n)
+            k = -k
+    return d
 
 
-def F1(x):
-    return -2 * x + (0.3 / math.cos(0.3 * x + 0.5) ** 2)
+def getMatrix(matrix, p, i, j, m):
+    di = 0
+    for ki in range(m - 1):
+        if ki == i:
+            di = 1
+        dj = 0
+        for kj in range(m - 1):
+            if kj == j:
+                dj = 1
+            p[ki][kj] = matrix[ki + di][kj + dj]
 
 
-def G(x):
-    return x - F(x) / F1(x)
+def swap_el(matrix, b, k, m):
+    for i in range(m):
+        matrix[i][k] = b[i]
 
 
-a1, b1 = -1.0, 0.0
-e = 0.0000000001
+def copy_matrix(matrix, m):
+    tmp = [[m] * m for _ in range(m)]
+    for i in range(m):
+        for j in range(m):
+            tmp[i][j] = matrix[i][j]
+    return tmp
 
 
-def half_divide_method(a, b):
-    x = (a + b) / 2
-    while math.fabs(F(x)) >= e:
-        x = (a + b) / 2
-        a, b = (a, x) if F(a) * F(x) < 0 else (x, b)
-    return (a + b) / 2
+def solution_print(sol, m):
+    for i in range(m):
+        print("x%d  = %.4f" % (i + 1, sol[i]))
 
 
-def simple_iteration(a, b):
-    if F(a) * F(b) < 0:
-        xn = a
-        xn1 = b
-        while abs(xn1 - xn) > e:
-            xn = xn1
-            xn1 = G(xn)
-        return round(xn1, 4)
-    else:
-        return "choose another interval"
+def eMatrix(m):
+    E = [[0] * m for _ in range(m)]
+    for i in range(m):
+        for j in range(m):
+            if i == j:
+                E[i][j] = 1
+    return E
 
 
-def chord_tangent_method(a, b):
-    x0 = a
-    if F(a) * F(b) > 0:
-        print('a or b is incorrect')
-    else:
-        x11 = x0 - F(x0) / F1(x0)
-        x12 = a - ((b - a) * F(a) / (F(b) - F(a)))
-        e1 = (x11 + x12) / 2
-        while abs(e1 - x11) > e:
-            a = x11
-            b = x12
-            x11 = a - F(a) / F1(a)
-            x12 = a - ((b - a) * F(a) / (F(b) - F(a)))
-            e1 = (x11 + x12) / 2
-        return x11
+def LU_decomposition(L, U, m):
+    for k in range(m - 1):
+        for i in range(m - 1 - k):
+            p = k + i + 1
+            L[p][k] = U[p][k] / U[k][k]
+            for j in range(m):
+                U[p][j] = U[p][j] - U[k][j] * L[p][k]
 
 
-print('root of the equation half divide method \n x = '
-      '%.10f' % half_divide_method(a1, b1))
+def solY(L, y, b, m):
+    for i in range(m):
+        y[i] = b[i] - L[i][0] * y[0] - L[i][1] * y[1] - L[i][2] * y[2]
 
-print('root of the equation simple iteration method \n x = '
-      '%.10f' % simple_iteration(a1, b1))
 
-print('root of the equation chord tangent method \n x = '
-      '%.10f' % chord_tangent_method(a1, b1))
+def solx(U, x, y, m):
+    for i in range(m):
+        k = m - 1 - i
+        x[k] = (y[k] - U[k][3] * x[3] - U[k][2] * x[2] - U[k][1] * x[1]) / U[k][k]
+
+
+def Kramer(matrix, b, m):
+    sol = m * [0]
+    d = determinant(matrix, m)
+    dArray = [0] * m
+    for i in range(m):
+        dArray[i] = copy_matrix(matrix, m)
+        swap_el(dArray[i], b, i, m)
+        sol[i] = determinant(dArray[i], m) / d
+
+    return sol
+
+
+def CholeskyMethod(A, b, m):
+    L = eMatrix(m)
+    U = copy_matrix(A, m)
+    LU_decomposition(L, U, m)
+    y = [0] * SIZE
+    x = [0] * SIZE
+    solY(L, y, b, m)
+    solx(U, x, y, m)
+    return x
+
+
+def ReverseMatrixMethod(matrix, b, SIZE):
+    OM = np.linalg.inv(matrix)
+    X2 = np.matmul(OM, b)
+    return X2
+
+
+print("Kramer system solution:")
+solution_print(Kramer(matrix2, b, SIZE), SIZE)
+print("")
+
+print("Cholesky system solution")
+solution_print(CholeskyMethod(matrix2, b, SIZE), SIZE)
+print("")
+
+print("Solution of the system by the inverse matrix method")
+solution_print(ReverseMatrixMethod(matrix2, b, SIZE), SIZE)
+print("\nTest:")
+print("[ 0.03177144  0.09040831 -0.01935472  0.025419 ]")
